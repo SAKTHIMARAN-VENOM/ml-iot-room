@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Room Occupancy Detection | ML & IoT</title>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Top Navigation / Header -->
+        <header class="header">
+            <div class="header-brand">
+                <div class="brand-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                        <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                    </svg>
+                </div>
+                <div>
+                    <h1>Smart Room Occupancy Detection</h1>
+                    <p class="subtitle">IoT Sensor Fusion + Environmental Machine Learning (Random Forest)</p>
+                </div>
+            </div>
+            <div class="header-status">
+                <div class="status-pill status-simulated" id="hardwareStatusPill">
+                    <span class="pulse-dot warning"></span>
+                    <span>ESP32 Hardware: Awaiting Connection</span>
+                </div>
+                <div class="status-pill status-online" id="modelStatusPill">
+                    <span class="pulse-dot success"></span>
+                    <span id="modelLoadedText">Model: Active (3 Features)</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Hardware Simulation Notice Banner -->
+        <div class="alert-banner" id="simulationBanner">
+            <div class="alert-icon">⚠️</div>
+            <div class="alert-content">
+                <strong>Test Mode Active:</strong> Environmental sensor readings and PIR motion states are currently <em>manually entered test inputs</em>. They simulate your upcoming <strong>ESP32, DHT11, LDR, and PIR sensor</strong> hardware readings.
+            </div>
+        </div>
+
+        <!-- Main Dashboard Grid -->
+        <main class="dashboard-grid">
+            
+            <!-- LEFT COLUMN: Status Cards & Combined Heuristic Decision -->
+            <section class="left-panel">
+                
+                <!-- Primary Combined Decision Card -->
+                <div class="card status-card">
+                    <div class="card-header">
+                        <span class="section-tag">FUSED INTELLIGENCE</span>
+                        <h2>Combined Room Occupancy Status</h2>
+                    </div>
+                    
+                    <div class="decision-display">
+                        <div class="main-badge" id="combinedBadge">
+                            <span class="badge-icon" id="combinedIcon">⏳</span>
+                            <span class="badge-text" id="combinedStatusText">Awaiting Input</span>
+                        </div>
+                        <div class="confidence-tag" id="confidenceTag">Confidence: --</div>
+                    </div>
+
+                    <div class="reasoning-box">
+                        <div class="reasoning-label">Decision Reasoning:</div>
+                        <p id="combinedReasoningText">Select a test scenario or enter sensor readings on the right and click "Run Occupancy Prediction" to evaluate.</p>
+                    </div>
+
+                    <div class="disclaimer-mini">
+                        ℹ️ Heuristic rule-layer fusion. Will be calibrated with physical ESP32 data upon hardware integration.
+                    </div>
+                </div>
+
+                <!-- Dual Verification Breakdown (ML vs PIR) -->
+                <div class="two-col-grid">
+                    
+                    <!-- Environmental ML Card -->
+                    <div class="card sub-card">
+                        <div class="card-header-sm">
+                            <span class="card-icon">🧠</span>
+                            <h3>Environmental ML</h3>
+                        </div>
+                        <div class="metric-value-box">
+                            <div class="sub-status" id="mlStatusText">--</div>
+                            <div class="sub-prob" id="mlProbabilityText">Probability: --%</div>
+                        </div>
+                        <div class="progress-bar-container">
+                            <div class="progress-bar-fill" id="mlProbabilityBar" style="width: 0%;"></div>
+                        </div>
+                        <div class="feature-tags">
+                            <span class="tag">Temp</span>
+                            <span class="tag">Humidity</span>
+                            <span class="tag">Light</span>
+                        </div>
+                    </div>
+
+                    <!-- PIR Motion Card -->
+                    <div class="card sub-card">
+                        <div class="card-header-sm">
+                            <span class="card-icon">📡</span>
+                            <h3>PIR Motion State</h3>
+                        </div>
+                        <div class="metric-value-box">
+                            <div class="sub-status" id="pirPinText">LOW (No Motion)</div>
+                            <div class="sub-prob" id="pirTimerText">Last Motion: Never</div>
+                        </div>
+                        <div class="pir-quick-action">
+                            <button class="btn btn-secondary btn-sm" id="btnPulsePIR">
+                                ⚡ Pulse PIR Motion (HIGH)
+                            </button>
+                        </div>
+                        <div class="pir-timeout-meta" id="pirTimeoutMeta">
+                            Hold Window: 300s timeout
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Live Sensor Readings Cards -->
+                <div class="sensor-cards-grid">
+                    <div class="sensor-card">
+                        <div class="sensor-title">Temperature (DHT11)</div>
+                        <div class="sensor-value"><span id="valTemp">23.5</span><small>°C</small></div>
+                        <div class="sensor-meta">Historical Avg: 20.9 °C</div>
+                    </div>
+                    <div class="sensor-card">
+                        <div class="sensor-title">Humidity (DHT11)</div>
+                        <div class="sensor-value"><span id="valHum">28.0</span><small>%</small></div>
+                        <div class="sensor-meta">Historical Avg: 27.7 %</div>
+                    </div>
+                    <div class="sensor-card">
+                        <div class="sensor-title">Light (LDR Sensor)</div>
+                        <div class="sensor-value"><span id="valLight">450</span><small>Lux</small></div>
+                        <div class="sensor-meta">Historical Max: 1,697 Lux</div>
+                    </div>
+                    <div class="sensor-card">
+                        <div class="sensor-title">PIR Motion Sensor</div>
+                        <div class="sensor-value"><span id="valPIR">0</span><small>Digital</small></div>
+                        <div class="sensor-meta" id="pirCardMeta">Pin: LOW</div>
+                    </div>
+                </div>
+
+                <!-- Recent History Chart -->
+                <div class="card chart-card">
+                    <div class="card-header flex-between">
+                        <h2>Recent Sensor & Occupancy Trends</h2>
+                        <span class="badge-subtle">Last 20 Inferences</span>
+                    </div>
+                    <div class="chart-wrapper">
+                        <canvas id="trendsChart"></canvas>
+                    </div>
+                </div>
+
+            </section>
+
+            <!-- RIGHT COLUMN: Test Inputs, Presets & Model Validation Metrics -->
+            <section class="right-panel">
+                
+                <!-- Sensor Input Simulator Form -->
+                <div class="card form-card">
+                    <div class="card-header">
+                        <span class="section-tag">SIMULATOR & TEST BENCH</span>
+                        <h2>Sensor Input Controls</h2>
+                    </div>
+
+                    <!-- Preset Buttons -->
+                    <div class="presets-section">
+                        <label class="input-label">Quick Test Scenarios:</label>
+                        <div class="preset-buttons-grid">
+                            <button type="button" class="preset-btn" data-preset="empty_night">
+                                🌙 Empty Dark Night
+                            </button>
+                            <button type="button" class="preset-btn" data-preset="active_office">
+                                💼 Active Office
+                            </button>
+                            <button type="button" class="preset-btn" data-preset="seated_reading">
+                                📖 Seated Still (PIR=0)
+                            </button>
+                            <button type="button" class="preset-btn" data-preset="doorway_walk">
+                                🚶 Transitory Walkthrough
+                            </button>
+                        </div>
+                    </div>
+
+                    <form id="predictionForm" class="prediction-form">
+                        <!-- Temperature Input -->
+                        <div class="form-group">
+                            <div class="form-label-row">
+                                <label for="inputTemp">Temperature (°C):</label>
+                                <span class="range-display" id="dispTemp">23.5 °C</span>
+                            </div>
+                            <input type="range" id="inputTemp" min="15.0" max="35.0" step="0.1" value="23.5">
+                            <div class="range-hints">
+                                <span>15 °C</span>
+                                <span>25 °C</span>
+                                <span>35 °C</span>
+                            </div>
+                        </div>
+
+                        <!-- Humidity Input -->
+                        <div class="form-group">
+                            <div class="form-label-row">
+                                <label for="inputHum">Relative Humidity (%):</label>
+                                <span class="range-display" id="dispHum">28.0 %</span>
+                            </div>
+                            <input type="range" id="inputHum" min="10.0" max="70.0" step="0.5" value="28.0">
+                            <div class="range-hints">
+                                <span>10 %</span>
+                                <span>40 %</span>
+                                <span>70 %</span>
+                            </div>
+                        </div>
+
+                        <!-- Light Input -->
+                        <div class="form-group">
+                            <div class="form-label-row">
+                                <label for="inputLight">Light Level (Lux):</label>
+                                <span class="range-display" id="dispLight">450 Lux</span>
+                            </div>
+                            <input type="range" id="inputLight" min="0" max="1500" step="5" value="450">
+                            <div class="range-hints">
+                                <span>0 (Dark)</span>
+                                <span>500 (Indoor)</span>
+                                <span>1500 (Bright)</span>
+                            </div>
+                        </div>
+
+                        <!-- PIR Motion Toggle -->
+                        <div class="form-group">
+                            <label class="input-label">PIR Physical Motion Signal:</label>
+                            <div class="pir-toggle-group">
+                                <label class="pir-radio-label">
+                                    <input type="radio" name="pirState" value="0" checked id="pirLowRadio">
+                                    <span>LOW (No Motion)</span>
+                                </label>
+                                <label class="pir-radio-label">
+                                    <input type="radio" name="pirState" value="1" id="pirHighRadio">
+                                    <span>HIGH (Motion Active)</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary btn-block" id="btnSubmit">
+                            🚀 Run Occupancy Prediction
+                        </button>
+                    </form>
+
+                    <!-- Configurable PIR Timeout -->
+                    <div class="timeout-config-box">
+                        <label for="inputTimeout" class="input-label-sm">Configurable PIR Occupancy Timeout (seconds):</label>
+                        <div class="timeout-inline">
+                            <input type="number" id="inputTimeout" min="10" max="3600" value="300">
+                            <button type="button" class="btn btn-secondary btn-sm" id="btnSaveTimeout">Save Timeout</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Model Evaluation & Metrics Card -->
+                <div class="card metrics-card">
+                    <div class="card-header flex-between">
+                        <div>
+                            <span class="section-tag">VERIFIED MODEL METRICS</span>
+                            <h2>Test Evaluation (Time-Split)</h2>
+                        </div>
+                        <button type="button" class="btn btn-outline btn-sm" id="btnViewCM">
+                            🔍 Confusion Matrix
+                        </button>
+                    </div>
+
+                    <div class="metrics-grid">
+                        <div class="metric-tile">
+                            <div class="tile-val" id="metricAcc">99.54%</div>
+                            <div class="tile-label">Accuracy</div>
+                        </div>
+                        <div class="metric-tile">
+                            <div class="tile-val" id="metricPrec">98.56%</div>
+                            <div class="tile-label">Precision</div>
+                        </div>
+                        <div class="metric-tile">
+                            <div class="tile-val" id="metricRec">99.73%</div>
+                            <div class="tile-label">Recall</div>
+                        </div>
+                        <div class="metric-tile">
+                            <div class="tile-val" id="metricF1">99.14%</div>
+                            <div class="tile-label">F1-Score</div>
+                        </div>
+                    </div>
+
+                    <!-- Feature Importance Breakdown -->
+                    <div class="feature-importance-box">
+                        <div class="sub-heading">Feature Importance (Random Forest):</div>
+                        <div class="fi-item">
+                            <div class="fi-header"><span>Light Sensor</span><span>66.7%</span></div>
+                            <div class="fi-bar"><div class="fi-fill" style="width: 66.7%;"></div></div>
+                        </div>
+                        <div class="fi-item">
+                            <div class="fi-header"><span>Temperature (DHT11)</span><span>28.2%</span></div>
+                            <div class="fi-bar"><div class="fi-fill" style="width: 28.2%;"></div></div>
+                        </div>
+                        <div class="fi-item">
+                            <div class="fi-header"><span>Humidity (DHT11)</span><span>5.1%</span></div>
+                            <div class="fi-bar"><div class="fi-fill" style="width: 5.1%;"></div></div>
+                        </div>
+                    </div>
+
+                    <div class="baseline-note">
+                        Baseline Comparison: Dummy Majority Baseline = <strong>73.32%</strong> accuracy (0.00 F1). The 3-feature Random Forest eliminates temporal leakage with time-based 80/20 splitting.
+                    </div>
+                </div>
+
+            </section>
+        </main>
+
+        <!-- Confusion Matrix Modal -->
+        <div class="modal-backdrop" id="cmModal">
+            <div class="modal-card">
+                <div class="modal-header">
+                    <h3>Genuine Confusion Matrix (4,112 Test Samples)</h3>
+                    <button class="btn-close" id="btnCloseModal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <img src="{{ url_for('static', filename='img/confusion_matrix.png') }}" alt="Confusion Matrix Plot" class="cm-image">
+                    <div class="cm-summary">
+                        <p><strong>True Negatives (Unoccupied):</strong> 2,999</p>
+                        <p><strong>False Positives:</strong> 16</p>
+                        <p><strong>False Negatives:</strong> 3</p>
+                        <p><strong>True Positives (Occupied):</strong> 1,094</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>Smart Room Occupancy Detection System &bull; Machine Learning & IoT Architecture &bull; Designed for ESP32 + DHT11 + LDR + PIR</p>
+        </footer>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+</body>
+</html>

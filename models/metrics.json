@@ -1,0 +1,61 @@
+{
+    "features": [
+        "Temperature",
+        "Humidity",
+        "Light"
+    ],
+    "feature_importances": {
+        "Temperature": 0.28202827174461426,
+        "Humidity": 0.0510994951639878,
+        "Light": 0.666872233091398
+    },
+    "test_metrics": {
+        "model_name": "Random Forest Model",
+        "accuracy": 0.9953793774319066,
+        "precision_class1": 0.9855855855855856,
+        "recall_class1": 0.9972652689152234,
+        "f1_score_class1": 0.991391028545537,
+        "roc_auc": 0.9984025481828174,
+        "confusion_matrix": [
+            [
+                2999,
+                16
+            ],
+            [
+                3,
+                1094
+            ]
+        ]
+    },
+    "baseline_comparison": {
+        "dummy_accuracy": 0.7332198443579766,
+        "lr_accuracy": 0.9956225680933852,
+        "rf_accuracy": 0.9953793774319066,
+        "dummy_f1": 0.0,
+        "lr_f1": 0.9918478260869565,
+        "rf_f1": 0.991391028545537
+    },
+    "split_info": {
+        "total_samples": 20560,
+        "train_samples": 16448,
+        "test_samples": 4112,
+        "train_start_date": "2015-02-02 14:19:00",
+        "train_end_date": "2015-02-15 12:47:00",
+        "test_start_date": "2015-02-15 12:48:00",
+        "test_end_date": "2015-02-18 09:19:00",
+        "train_class_distribution": {
+            "0": 12795,
+            "1": 3653
+        },
+        "test_class_distribution": {
+            "0": 3015,
+            "1": 1097
+        }
+    },
+    "confusion_matrix": {
+        "tn": 2999,
+        "fp": 16,
+        "fn": 3,
+        "tp": 1094
+    }
+}
